@@ -49,12 +49,12 @@ def getClassificationJobStatus(jobid):
 # If job id exists, return S3 URI, otherwise return "NON_EXISTENT"
 def getClassificationResultLocation(jobid):
     try:
-	result = comprehend.describe_document_classification_job(JobId=jobid)
+	    result = comprehend.describe_document_classification_job(JobId=jobid)
     	s3_result_location = result["DocumentClassificationJobProperties"]["OutputDataConfig"]["S3Uri"]
     	print("Result Location: " + s3_result_location)
     	return s3_result_location
     except ClientError as e:
-	return "NON_EXISTENT"
+	    return "NON_EXISTENT"
 
 # downloads and parses classification results given S3 URI and job id.
 def downloadAndParseClassificationResults(s3_result_location, jobid):
@@ -74,19 +74,30 @@ def downloadAndParseClassificationResults(s3_result_location, jobid):
 def add_job():
     inputdata = request.args.get('comment')
     # return the job id
-    return "this is a placeholder"
+    id = uploadClassificationData(inputdata)
+    return "{\n    \"job-id\":"+id+"\n}"
 
 # given the job id, check if the job is done.
 @app.route("/check_job_status", methods=['GET', 'POST'])
 def check_job():
     job_id = request.args.get('jobid')
     # return the job status. (finished, not finished, etc.)
+    status = getClassificationJobStatus(job_id)
+    return "{\n    \"status\":"+status+"\n}"
 
 # give the job id, return the classification results of the job.
 @app.route("/get_results", methods=['GET', 'POST'])
 def get_job_results():
     job_id = request.args.get('jobid')
     # return the job's classification results.
+    location = getClassificationResultLocation(job_id)
+    if(location=="NON_EXISTENT"):
+        return "{}"
+
+    data = downloadAndParseClassificationResults(location,jod_id)
+
+    return "{\n    \"results\":+data+"\n}"
+
 
 if (__name__ == "__main__"):
     print("Starting ShieldBot API Server...")
@@ -99,4 +110,3 @@ if (__name__ == "__main__"):
     # print(getClassificationJobStatus("98e2ccf561f63051df381747c7bbf7dc"))
     # print(getClassificationJobStatus("1798b4f6315e33fa3725a34c382df4be"))
     app.run(port = 5000)
-
