@@ -49,7 +49,7 @@ def getClassificationJobStatus(jobid):
 # If job id exists, return S3 URI, otherwise return "NON_EXISTENT"
 def getClassificationResultLocation(jobid):
     try:
-	    result = comprehend.describe_document_classification_job(JobId=jobid)
+        result = comprehend.describe_document_classification_job(JobId=jobid)
     	s3_result_location = result["DocumentClassificationJobProperties"]["OutputDataConfig"]["S3Uri"]
     	print("Result Location: " + s3_result_location)
     	return s3_result_location
@@ -94,9 +94,9 @@ def get_job_results():
     if(location=="NON_EXISTENT"):
         return "{}"
 
-    data = downloadAndParseClassificationResults(location,jod_id)
+    data = downloadAndParseClassificationResults(location,job_id)
 
-    return "{\n    \"results\":+data+"\n}"
+    return "{\n    \"results\":"+data+"\n}"
 
 
 if (__name__ == "__main__"):
