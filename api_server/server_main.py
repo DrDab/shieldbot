@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 from flask import Flask, request
 from urlparse import urlparse
 import boto3
@@ -9,6 +11,7 @@ import os
 app = Flask(__name__)
 s3 = boto3.resource('s3')
 comprehend = boto3.client('comprehend', region_name='us-east-2')
+translate = boto3.client('translate', region_name='us-east-2')
 
 # uploads classification data, given string input data, returns job-id of classification data.
 def uploadClassificationData(inputdata):
@@ -88,22 +91,19 @@ def listAllClassificationJobs(maxjobs):
    #return toreturndata
    return json.loads(toreturndata)
 	
-	
-# add the job given the comment and return the job id in JSON form.
-@app.route("/add_job", methods=['GET', 'POST'])
-def add_job():
-    inputdata = request.args.get('comment')
-    # return the job id
-    id = uploadClassificationData(inputdata)
-    return json.loads("{\n    \"job-id\":\""+id+"\"\n}")
 
-# given the job id, check if the job is done.
-@app.route("/check_job_status", methods=['GET', 'POST'])
-def check_job():
-    job_id = request.args.get('jobid')
-    # return the job status. (finished, not finished, etc.)
-    status = getClassificationJobStatus(job_id)
-    return json.loads("{\n    \"status\":\""+status+"\"\n}")
+# translate unknown language text to english.
+def translate_text(totranslate):
+	response = translate.translate_text(
+		Text=totranslate,
+	    	SourceLanguageCode='auto',
+	    	TargetLanguageCode='en'
+    	)
+	print ("Detected language for " + totranslate + " is " + response["SourceLanguageCode"])
+	return response["TranslatedText"]
+
+
+# BEGIN HTTP RESPONSE CODE.
 
 # give the job id, return the classification results of the job.
 @app.route("/get_results", methods=['GET', 'POST'])
@@ -123,13 +123,31 @@ def get_job_results():
 
     except ClientError as e:
 		return json.loads("{}")
-    
+
+# list all the jobs and statuses
 @app.route("/list_jobs", methods=['GET', 'POST'])
 def list_jobs():
 	numJobsToList = request.args.get('count')
 	if numJobsToList is None:
 		return listAllClassificationJobs(100)
 	return listAllClassificationJobs(int(numJobsToList))
+
+# add the job given the comment and return the job id in JSON form.
+@app.route("/add_job", methods=['GET', 'POST'])
+def add_job():
+    inputdata = request.args.get('comment')
+    # return the job id
+    id = uploadClassificationData(translate_text(inputdata))
+    return json.loads("{\n    \"job-id\":\""+id+"\"\n}")
+
+# given the job id, check if the job is done.
+@app.route("/check_job_status", methods=['GET', 'POST'])
+def check_job():
+    job_id = request.args.get('jobid')
+    # return the job status. (finished, not finished, etc.)
+    status = getClassificationJobStatus(job_id)
+    return json.loads("{\n    \"status\":\""+status+"\"\n}")
+
 
 
 if (__name__ == "__main__"):
@@ -143,4 +161,5 @@ if (__name__ == "__main__"):
     # print(getClassificationJobStatus("98e2ccf561f63051df381747c7bbf7dc"))
     # print(getClassificationJobStatus("1798b4f6315e33fa3725a34c382df4be"))
     # print(listAllClassificationJobs(100))
+    # print(translate_text(u"你好，世界"))
     app.run(port = 5000)
