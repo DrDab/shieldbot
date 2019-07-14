@@ -1,6 +1,7 @@
-from flask import Flask
+from flask import Flask, request
 from urlparse import urlparse
 import boto3
+from botocore.exceptions import ClientError
 import time
 import json
 import os
@@ -9,6 +10,7 @@ app = Flask(__name__)
 s3 = boto3.resource('s3')
 comprehend = boto3.client('comprehend', region_name='us-east-2')
 
+# uploads classification data, given string input data, returns job-id of classification data.
 def uploadClassificationData(inputdata):
     timestamp = str(int(time.time()))
     print("Upload commenced, Timestamp: " + timestamp);
@@ -33,18 +35,28 @@ def uploadClassificationData(inputdata):
     print("Done")
     return response["JobId"]
 
+# can return NON_EXISTENT, COMPLETED, IN_PROGRESS string.
 def getClassificationJobStatus(jobid):
-    result = comprehend.describe_document_classification_job(JobId=jobid)
-    print("Result:" + str(result))
-    job_status = result["DocumentClassificationJobProperties"]["JobStatus"]
-    return job_status
+    try:
+        result = comprehend.describe_document_classification_job(JobId=jobid)
+        print("Result:" + str(result))
+        job_status = result["DocumentClassificationJobProperties"]["JobStatus"]
+        return job_status
+    except ClientError as e:
+        print ("Job " + jobid + " does not exist")
+        return "NON_EXISTENT"
 
+# If job id exists, return S3 URI, otherwise return "NON_EXISTENT"
 def getClassificationResultLocation(jobid):
-    result = comprehend.describe_document_classification_job(JobId=jobid)
-    s3_result_location = result["DocumentClassificationJobProperties"]["OutputDataConfig"]["S3Uri"]
-    print("Result Location: " + s3_result_location)
-    return s3_result_location
+    try:
+	result = comprehend.describe_document_classification_job(JobId=jobid)
+    	s3_result_location = result["DocumentClassificationJobProperties"]["OutputDataConfig"]["S3Uri"]
+    	print("Result Location: " + s3_result_location)
+    	return s3_result_location
+    except ClientError as e:
+	return "NON_EXISTENT"
 
+# downloads and parses classification results given S3 URI and job id.
 def downloadAndParseClassificationResults(s3_result_location, jobid):
    owo = boto3.client('s3')
    os.system("mkdir outputs/" + jobid)
@@ -57,12 +69,24 @@ def downloadAndParseClassificationResults(s3_result_location, jobid):
    results = f.read()
    return results
 
+# add the job given the comment and return the job id in JSON form.
+@app.route("/add_job", methods=['GET', 'POST'])
+def add_job():
+    inputdata = request.args.get('comment')
+    # return the job id
+    return "this is a placeholder"
 
-@app.route("/")
-def hello():
-    data = uploadClassificationData("notices bulge OwO Whats This")
-    job_status = getClassificationJobStatus(data)
-    return "Trying to upload classification data... \n" + data + "\n" + job_status
+# given the job id, check if the job is done.
+@app.route("/check_job_status", methods=['GET', 'POST'])
+def check_job():
+    job_id = request.args.get('jobid')
+    # return the job status. (finished, not finished, etc.)
+
+# give the job id, return the classification results of the job.
+@app.route("/get_results", methods=['GET', 'POST'])
+def get_job_results():
+    job_id = request.args.get('jobid')
+    # return the job's classification results.
 
 if (__name__ == "__main__"):
     print("Starting ShieldBot API Server...")
@@ -70,6 +94,9 @@ if (__name__ == "__main__"):
     #for bucket in s3.buckets.all():
     #    print(bucket.name)
     #print("Done")
-    print(downloadAndParseClassificationResults(getClassificationResultLocation("98e2ccf561f63051df381747c7bbf7dc"), "98e2ccf561f63051df381747c7bbf7dc"))
+    # print(uploadClassificationData("furreis r gey"))
+    # print(downloadAndParseClassificationResults(getClassificationResultLocation("98e2ccf561f63051df381747c7bbf7dc"), "98e2ccf561f63051df381747c7bbf7dc"))
+    # print(getClassificationJobStatus("98e2ccf561f63051df381747c7bbf7dc"))
+    # print(getClassificationJobStatus("1798b4f6315e33fa3725a34c382df4be"))
     app.run(port = 5000)
 
