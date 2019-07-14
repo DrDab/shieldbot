@@ -90,13 +90,18 @@ def check_job():
 def get_job_results():
     job_id = request.args.get('jobid')
     # return the job's classification results.
-    location = getClassificationResultLocation(job_id)
-    if(location=="NON_EXISTENT"):
-        return "{}"
+    try:
+	location = getClassificationResultLocation(job_id)
+        if(location=="NON_EXISTENT"):
+        	return "{}"
 
-    data = downloadAndParseClassificationResults(location,job_id)
+    	data = downloadAndParseClassificationResults(location,job_id)
 
-    return "{\n    \"results\":"+data+"\n}"
+    	return "{\n    \"results\":"+data+"\n}"
+
+    except ClientError as e:
+		return "{}"
+    
 
 
 if (__name__ == "__main__"):
